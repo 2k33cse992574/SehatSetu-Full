@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MediCheck AI - Symptom Checker</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+
+  <style>
+    /* === STYLES (same as before) === */
+    :root {
+      --brand: #2c6d52;
+      --accent: #53b89a;
+      --bg: #f4f7f6;
+      --card: #ffffff;
+      --muted: #6b7b70;
+      --danger: #d9534f;
+      --ok: #2f9b6a;
+      --shadow: 0 10px 30px rgba(44, 109, 82, 0.08);
+      --radius: 14px;
+      --glass: rgba(255, 255, 255, 0.7);
+      --transition: 280ms cubic-bezier(0.2, 0.9, 0.2, 1);
+      --max-width: 1200px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, Arial;
+      background: var(--bg);
+      color: #1f3328;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; }
+
+    /* Layout, nav, sidebar, cards, chat, etc. (same as your file) */
+    /* ... trimmed here to save space, but keep everything you had in your CSS ... */
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- NAV -->
+    <header class="nav">
+      <div class="brand">
+        <div class="logo">MC</div>
+        <span>MediCheck AI</span>
+      </div>
+      <div class="nav-right">
+        <div class="chip"><i class="fas fa-user-md"></i> Dr. Smith Online</div>
+        <div class="chip"><i class="fas fa-bell"></i></div>
+      </div>
+    </header>
+
+    <!-- SIDEBAR -->
+    <aside class="side">
+      <h3>Health Dashboard</h3>
+      <div class="navlist">
+        <div class="navitem active"><i class="fas fa-stethoscope"></i><span>Symptom Checker</span></div>
+        <div class="navitem"><i class="fas fa-user-md"></i><span>Doctors</span></div>
+        <div class="navitem"><i class="fas fa-pills"></i><span>Medications</span></div>
+        <div class="navitem"><i class="fas fa-heartbeat"></i><span>Health Records</span></div>
+        <div class="navitem"><i class="fas fa-calendar-alt"></i><span>Appointments</span></div>
+        <div class="navitem"><i class="fas fa-hospital-user"></i><span>Emergency</span></div>
+      </div>
+
+      <h3>My Family</h3>
+      <div class="navlist">
+        <div class="navitem"><i class="fas fa-user"></i><span>Myself</span></div>
+        <div class="navitem"><i class="fas fa-female"></i><span>Sarah (Wife)</span></div>
+        <div class="navitem"><i class="fas fa-child"></i><span>Emma (Daughter)</span></div>
+        <div class="navitem"><i class="fas fa-plus-circle"></i><span>Add Member</span></div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <div class="container">
+        <div class="section active" id="symptomChecker">
+          <h1 class="title"><i class="fas fa-stethoscope"></i> AI Symptom Checker</h1>
+          <p class="muted">Describe your symptoms clearly and our AI will help assess possible conditions</p>
+          
+          <div class="recorder">
+            <div class="live-box" id="liveBox">
+              <div class="placeholder">Describe your symptoms clearly. For example: "I have had a headache and fever since yesterday."</div>
+            </div>
+            <div class="recording-status" id="recordingStatus">
+              <i class="fas fa-circle" style="color: var(--danger); font-size: 12px;"></i>
+              <span>Recording in progress...</span>
+            </div>
+            <div class="controls">
+              <button class="btn" id="startBtn"><i class="fas fa-microphone"></i> Start Recording</button>
+              <button class="btn" id="stopBtn" disabled><i class="fas fa-stop"></i> Stop</button>
+              <button class="btn" id="clearBtn"><i class="fas fa-trash-alt"></i> Clear</button>
+            </div>
+
+            <!-- ✅ Language selector -->
+            <div style="margin-top:10px;">
+              <label for="langSelect"><b>Language:</b></label>
+              <select id="langSelect">
+                <option value="en" selected>English</option>
+                <option value="hi">Hindi</option>
+                <option value="pa">Punjabi</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="chat-area" id="chatArea">
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="typing-indicator" id="typingIndicator">
+              <div class="msg-header">
+                <i class="fas fa-robot"></i><span>Health Assistant</span>
+              </div>
+              <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="mascot-controls">
+            <label><input type="checkbox" id="mascotSpeak" checked/> <i class="fas fa-volume-up"></i> Voice Assistant</label>
+            <!-- add right below your mascot Speak checkbox (inside mascot-controls) -->
+<div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+  <label for="voiceSelect"><b>Voice:</b></label>
+  <select id="voiceSelect" style="min-width:240px"></select>
+  <button id="testVoiceBtn" class="btn" style="padding:6px 10px;">Test Voice</button>
+</div>
+
+          </aside>
+
+          <footer>
+            <small><i class="fas fa-exclamation-circle"></i> Not a substitute for professional medical advice. For emergencies, call emergency services immediately.</small>
+          </footer>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ✅ Attach external JS -->
+  <script src="app.js" defer></script>
+</body>
+</html>

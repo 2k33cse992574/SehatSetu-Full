@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>AI Symptom Checker — Voice demo</title>
+  <style>
+    body { font-family: Inter, Arial, sans-serif; margin:18px; background:#f4f6f8; color:#111; }
+    h1 { font-size:20px; }
+    .controls { margin-bottom:12px; }
+    #chat { max-height:480px; overflow:auto; background:#fff; padding:12px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.06); }
+    .msg { margin:8px 0; padding:10px; border-radius:8px; }
+    .user { background:#e6ffed; text-align:left; }
+    .system { background:#f0f4ff; text-align:left; }
+    .note { color:#666; font-size:13px; margin-top:8px; }
+    .btn { padding:8px 12px; font-size:14px; margin-right:8px; }
+    .spinner { display:inline-block; width:14px; height:14px; border-radius:50%; background:#4caf50; animation:blink 1s infinite; margin-left:8px; }
+    @keyframes blink { 50% { opacity:0.25; } }
+  </style>
+</head>
+<body>
+  <h1>🩺 AI Symptom Checker — Voice demo</h1>
+
+  <div class="controls">
+    <label for="lang">Select language:</label>
+    <select id="lang">
+      <option value="en">English</option>
+      <option value="Hindi">Hindi</option>
+      <option value="Punjabi">Punjabi</option>
+    </select>
+
+    <button id="startBtn" class="btn">🎤 Start</button>
+    <button id="stopBtn" class="btn" disabled>🛑 Stop</button>
+    <span id="status" class="note">Status: idle</span>
+  </div>
+
+  <div id="chat">
+    <div class="msg system">Tip: Click Start, speak your symptoms in the chosen language, then Stop (or wait). The assistant replies in text + voice.</div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn  = document.getElementById('stopBtn');
+    const chat     = document.getElementById('chat');
+    const statusEl = document.getElementById('status');
+    const langSel  = document.getElementById('lang');
+
+    const sttMap = { en: 'en-IN', Hindi: 'hi-IN', Punjabi: 'pa-IN' };
+    const backendMap = { en: 'English', Hindi: 'Hindi', Punjabi: 'Punjabi' };
+
+    let recognition = null;
+    let finalTranscript = '';
+
+    function addMsg(text, who='system') {
+      const d = document.createElement('div');
+      d.className = 'msg ' + (who === 'user' ? 'user' : 'system');
+      d.textContent = text;
+      chat.appendChild(d);
+      chat.scrollTop = chat.scrollHeight;
+      return d;
+    }
+
+    function speakText(text, langCode) {
+      if (!("speechSynthesis" in window)) return;
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = langCode;
+      // pick best available voice
+      const voices = speechSynthesis.getVoices();
+      let v = voices.find(x => x.lang === langCode);
+      if (!v) {
+        const prefix = langCode.split('-')[0];
+        v = voices.find(x => x.lang && x.lang.startsWith(prefix));
+      }
+      if (v) u.voice = v;
+      u.rate = 0.95;
+      u.pitch = 1.0;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    }
+
+    function setupRecognition(langCode) {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        alert("Speech recognition not supported in this browser. Use Chrome/Edge.");
+        return null;
+      }
+      const r = new SR();
+      r.interimResults = true;
+      r.continuous = false;
+      r.lang = langCode;
+      return r;
+    }
+
+    startBtn.addEventListener('click', () => {
+      finalTranscript = "";
+      const uiLang = langSel.value;
+      const sttLang = sttMap[uiLang] || 'en-IN';
+      recognition = setupRecognition(sttLang);
+      if (!recognition) return;
+      recognition.start();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      statusEl.textContent = "Status: listening...";
+
+      let interim = '';
+      recognition.onresult = (ev) => {
+        interim = '';
+        for (let i = ev.resultIndex; i < ev.results.length; ++i) {
+          const t = ev.results[i][0].transcript;
+          if (ev.results[i].isFinal) finalTranscript += t + " ";
+          else interim += t;
+        }
+        const last = chat.lastElementChild;
+        if (last && last.classList.contains('user') && last.dataset.interim === "1") {
+          last.textContent = "You: " + (finalTranscript + interim).trim();
+        } else {
+          const n = document.createElement('div');
+          n.className = 'msg user';
+          n.dataset.interim = "1";
+          n.textContent = "You: " + (finalTranscript + interim).trim();
+          chat.appendChild(n);
+        }
+      };
+
+      recognition.onerror = (e) => {
+        console.error("STT error", e);
+        statusEl.textContent = "Status: error";
+        startBtn.disabled = false; stopBtn.disabled = true;
+      };
+
+      recognition.onend = () => {
+        // finalize user message
+        const last = chat.lastElementChild;
+        if (last && last.dataset && last.dataset.interim === "1") {
+          last.dataset.interim = "0";
+          last.textContent = "You: " + finalTranscript.trim();
+        } else if (finalTranscript.trim()) {
+          addMsg("You: " + finalTranscript.trim(), 'user');
+        }
+        startBtn.disabled = false; stopBtn.disabled = true;
+        statusEl.textContent = "Status: processing...";
+        if (finalTranscript.trim()) sendToServer(finalTranscript.trim());
+      };
+    });
+
+    stopBtn.addEventListener('click', () => {
+      if (recognition) recognition.stop();
+      startBtn.disabled = false; stopBtn.disabled = true;
+      statusEl.textContent = "Status: idle";
+    });
+
+    async function sendToServer(text) {
+      const uiLang = langSel.value;
+      const backendLang = backendMap[uiLang] || 'English';
+      const spinner = document.createElement('span'); spinner.className = 'spinner';
+      const waitMsg = addMsg("Analyzing (this may take a moment)...", 'system');
+      waitMsg.appendChild(spinner);
+
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, lang: backendLang })
+        });
+        const data = await res.json();
+        if (waitMsg && waitMsg.parentNode) waitMsg.remove();
+
+        if (!data || !data.diagnoses) {
+          addMsg("Sorry — no result. Try rephrasing the symptoms.", 'system');
+          statusEl.textContent = "Status: idle";
+          return;
+        }
+
+        const diagText = (Array.isArray(data.diagnoses) ? data.diagnoses.join(", ") : data.diagnoses);
+        const out = `Possible conditions: ${diagText}. Severity: ${data.severity}. Advice: ${data.advice}`;
+        addMsg(out, 'system');
+
+        // speak in selected language (use same codes as STT map)
+        const speakLangCode = sttMap[uiLang] || 'en-IN';
+        speakText(out, speakLangCode);
+
+        // show doctors if present
+        if (Array.isArray(data.doctors) && data.doctors.length) {
+          addMsg("Suggested doctors:", 'system');
+          data.doctors.forEach(d => addMsg(`${d.name} — ${d.specialty} — ${d.phone}`, 'system'));
+        }
+        statusEl.textContent = "Status: done";
+      } catch (err) {
+        console.error("call error", err);
+        if (waitMsg && waitMsg.parentNode) waitMsg.remove();
+        addMsg("Error contacting backend: " + (err.message || err), 'system');
+        statusEl.textContent = "Status: error";
+      }
+    }
+
+    // ensure voices loaded for TTS
+    window.addEventListener('load', () => {
+      if (!speechSynthesis.getVoices().length) {
+        speechSynthesis.addEventListener('voiceschanged', () => {});
+      }
+    });
+  </script>
+</body>
+</html>
