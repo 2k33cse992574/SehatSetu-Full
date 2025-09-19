@@ -1,39 +1,33 @@
 const mongoose = require('mongoose');
 
-const VerificationRequestSchema = new mongoose.Schema({
+const verificationRequestSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+
   type: {
     type: String,
-    enum: ['Doctor', 'Pharmacist'],
+    enum: ['doctor', 'pharmacist'], // lowercase only
     required: true,
   },
-  name: { type: String, required: true },
-  licenseNumber: { type: String, required: true, index: true },
-  specialization: String,
-  education: String,
-  experience: String,
-  dob: Date,
-  email: String,
-  phone: String,
-  photoUrl: String,
-  documents: [{
-    name: String,
-    url: String,
-    size: String,
-    uploadedAt: Date,
-  }],
+
+  licenseNumber: { type: String },
+
   status: {
     type: String,
-    enum: ['Pending', 'Verified', 'Rejected'],
-    default: 'Pending',
+    enum: ['pending', 'verified', 'rejected'], // lowercase only
+    default: 'pending',
     index: true,
   },
+
+  rejectedReason: { type: String },
   notes: [{ type: String }],
+
   submittedAt: { type: Date, default: Date.now },
-  verifiedAt: Date,
+  verifiedAt: { type: Date },
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
 }, { timestamps: true });
 
-VerificationRequestSchema.index({ type: 1, status: 1 });
-VerificationRequestSchema.index({ submittedAt: -1 });
+// Helpful indexes
+verificationRequestSchema.index({ type: 1, status: 1 });
+verificationRequestSchema.index({ submittedAt: -1 });
 
-module.exports = mongoose.model('VerificationRequest', VerificationRequestSchema);
+module.exports = mongoose.model('VerificationRequest', verificationRequestSchema);

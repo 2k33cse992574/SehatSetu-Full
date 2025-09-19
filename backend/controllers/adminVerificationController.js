@@ -1,13 +1,13 @@
 const VerificationRequest = require('../models/VerificationRequest');
-const User = require('../models/User'); // To update User.verificationStatus
+const User = require('../models/User');
 
 // GET /api/admin/verifications — List with filters
 exports.getAll = async (req, res) => {
   const { status, type } = req.query;
 
   let query = {};
-  if (status && status !== 'All') query.status = status;
-  if (type && type !== 'All') query.type = type;
+  if (status && status !== 'All') query.status = status.toLowerCase(); // ← normalize
+  if (type && type !== 'All') query.type = type.toLowerCase();        // ← normalize
 
   const requests = await VerificationRequest.find(query)
     .populate('userId', 'phone role verificationStatus')
@@ -34,12 +34,12 @@ exports.verify = async (req, res) => {
   const request = await VerificationRequest.findById(id);
   if (!request) return res.status(404).json({ message: 'Request not found' });
 
-  if (request.status !== 'Pending') {
+  if (request.status !== 'pending') { // ← FIXED: lowercase
     return res.status(400).json({ message: 'Already processed' });
   }
 
   // Update request
-  request.status = 'Verified';
+  request.status = 'verified'; // ← FIXED: lowercase
   request.verifiedAt = new Date();
   request.verifiedBy = req.admin._id;
   if (notes) request.notes.push(notes);
@@ -48,12 +48,12 @@ exports.verify = async (req, res) => {
   // ✅ Update associated User using userId
   const user = await User.findById(request.userId);
   if (user) {
-    user.verificationStatus = 'approved';
+    user.verificationStatus = 'approved'; // ← matches User schema
     user.isVerified = true;
     await user.save();
 
     // Notify user
-    sendVerificationEmail(user, 'verified', request.type);
+    sendVerificationEmail(user, 'verified', request.type); // ← type is still lowercase
   }
 
   res.json({ message: 'Verified successfully', request });
@@ -67,11 +67,11 @@ exports.reject = async (req, res) => {
   const request = await VerificationRequest.findById(id);
   if (!request) return res.status(404).json({ message: 'Request not found' });
 
-  if (request.status !== 'Pending') {
+  if (request.status !== 'pending') { // ← FIXED: lowercase
     return res.status(400).json({ message: 'Already processed' });
   }
 
-  request.status = 'Rejected';
+  request.status = 'rejected'; // ← FIXED: lowercase
   request.verifiedAt = new Date();
   request.verifiedBy = req.admin._id;
   if (reason) request.notes.push(`Reason: ${reason}`);
@@ -81,7 +81,7 @@ exports.reject = async (req, res) => {
   // ✅ Update associated User using userId
   const user = await User.findById(request.userId);
   if (user) {
-    user.verificationStatus = 'rejected';
+    user.verificationStatus = 'rejected'; // ← matches User schema
     await user.save();
 
     // Notify user
@@ -106,12 +106,18 @@ function sendVerificationEmail(user, status, type) {
 
 // GET /api/admin/stats
 exports.stats = async (req, res) => {
-  const pendingCount = await VerificationRequest.countDocuments({ status: 'Pending' });
-  const doctorPending = await VerificationRequest.countDocuments({ type: 'Doctor', status: 'Pending' });
-  const pharmacistPending = await VerificationRequest.countDocuments({ type: 'Pharmacist', status: 'Pending' });
+  const pendingCount = await VerificationRequest.countDocuments({ status: 'pending' }); // ← FIXED
+  const doctorPending = await VerificationRequest.countDocuments({ 
+    type: 'doctor', // ← FIXED: lowercase
+    status: 'pending' 
+  });
+  const pharmacistPending = await VerificationRequest.countDocuments({ 
+    type: 'pharmacist', // ← FIXED: lowercase
+    status: 'pending' 
+  });
 
   const verifiedThisMonth = await VerificationRequest.countDocuments({
-    status: 'Verified',
+    status: 'verified', // ← FIXED: lowercase
     verifiedAt: { $gte: new Date(new Date().setDate(new Date().getDate() - 30)) },
   });
 
